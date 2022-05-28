@@ -175,12 +175,14 @@ class image_editor(QMainWindow):
         image = QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], QImage.Format_RGB888)
         self.will_change_img = image
         self.image_label_1.setPixmap(QtGui.QPixmap.fromImage(image))
+        self.image_label_2.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
 
     def update_img(self,image):
         frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], QImage.Format_RGB888)
         self.will_change_img = image.copy()
         self.image_label_2.setPixmap(QPixmap.fromImage(image))
+        self.image_label_2.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
 
     def img_to_cv(self, image):
         cv_image = np.array(image)
