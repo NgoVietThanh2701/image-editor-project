@@ -28,7 +28,6 @@ class image_editor(QMainWindow):
         self.exist_img = False
         self.original_image = None
         self.will_change_img = None
-        self.tmp = None
         self.window_title="Image Editor"
         self.setWindowTitle(self.window_title)
         self.tabWidget.hide()
@@ -86,6 +85,9 @@ class image_editor(QMainWindow):
         self.actionDirectional_Filtering_2.triggered.connect(self.directional_filtering2)
         self.actionDirectional_Filtering_3.triggered.connect(self.directional_filtering3)
 
+        #-- chuong 3
+        self.actionPhoto_island.triggered.connect(self.photo_island)
+
         #-----view
         self.actionZoom_In.triggered.connect(self.zoom_out)
         self.actionZoom_Out.triggered.connect(self.zoom_in)
@@ -108,7 +110,7 @@ class image_editor(QMainWindow):
     def browse_image(self):
         self.filename = QFileDialog.getOpenFileName(filter="Image (*.*)")[0]
         self.original_image  = cv2.imread(self.filename)
-        self.tmp = self.original_image 
+        self.processed_filter = self.original_image
         self.exist_img = True
         self.update_img_original(self.original_image)
         self.tabWidget.show()
@@ -121,13 +123,6 @@ class image_editor(QMainWindow):
         self.scrollArea.show()
         self.back_btn.show()
 
-    def open_image(self):
-        fname = QFileDialog.getOpenFileName(filter="Image (*.*)")[0]
-        if fname:
-            self.loadImage(fname)
-        else:
-            print("Invalid Image")
-
     def exit(self):
         QApplication.instance().quit()
 
@@ -137,16 +132,16 @@ class image_editor(QMainWindow):
             self.slider_scaling.setValue(1)
             self.slider_gamma.setValue(10)
             self.slider_gaussian.setValue(0)
-            self.slider_dilate_erosior.setValue(1)
-            self.slider_log.setValue(1)
+            self.slider_dilate_erosior.setValue(0)
+            self.slider_log.setValue(0)
             self.slider_min.setValue(1)
             self.slider_max.setValue(1)
             self.slider_true_tone_1.setValue(0)
             self.slider_true_tone_2.setValue(0)
             self.slider_true_tone_3.setValue(0)
             self.slider_true_tone_4.setValue(0)
-            self.slider_60tv_val.setValue(1)
-            self.slider_60tv_threshold.setValue(1)
+            self.slider_60tv_val.setValue(0)
+            self.slider_60tv_threshold.setValue(0)
             self.slider_brightness.setValue(0)
             self.slider_changeBlur.setValue(0)
             self.update_img(self.original_image)
@@ -175,7 +170,7 @@ class image_editor(QMainWindow):
         image = QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], QImage.Format_RGB888)
         self.will_change_img = image
         self.image_label_1.setPixmap(QtGui.QPixmap.fromImage(image))
-        self.image_label_2.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        self.image_label_1.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
 
     def update_img(self,image):
         frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -196,8 +191,7 @@ class image_editor(QMainWindow):
         n = len(self.list_state)
         if (self.list_state[n-1] != self.list_state[n-2]):
             self.processed_filter = self.will_change_img 
-            
-                
+                     
 
     def back(self): # back to prev image
         n = len(self.list_image_for_undo)  
@@ -223,8 +217,8 @@ class image_editor(QMainWindow):
         image = ImageQt.fromqimage(self.processed_filter)
         img = self.img_to_cv(image)
         rows, cols, steps = img.shape
-        M = cv2.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
-        img = cv2.warpAffine(img, M, (cols, rows))
+        M = cv2.getRotationMatrix2D((cols / 2, rows / 2), angle, 1) # tao ma trận biến đổi M để quay ảnh
+        img = cv2.warpAffine(img, M, (cols, rows)) # phép biến đổi Affine
         self.update_img(img) 
         self.list_image_for_undo.append(img) 
         # delete image when slider more three
@@ -237,7 +231,7 @@ class image_editor(QMainWindow):
         self.value_scaling.setText(str(scaling_value))
         image = ImageQt.fromqimage(self.processed_filter)
         img = self.img_to_cv(image)
-        img = cv2.resize(img, None, fx=c, fy=c, interpolation=cv2.INTER_CUBIC)
+        img = cv2.resize(img, None, fx=c, fy=c, interpolation=cv2.INTER_CUBIC) # Inter_cubic: phương pháp nội suy
         self.update_img(img)     
         self.list_image_for_undo.append(img)    
        # delete image when slider more three
@@ -247,7 +241,6 @@ class image_editor(QMainWindow):
     def Gamma(self, gamma):
         gamma_value = self.slider_gamma.value()
         self.value_gamma.setText(str(gamma_value))  
-
         self.save_state("gamma")  
         image = ImageQt.fromqimage(self.processed_filter)
         img = self.img_to_cv(image)
@@ -258,7 +251,6 @@ class image_editor(QMainWindow):
         # sau đó được nâng lên thành lũy thừa của gamma nghịch đảo - giá trị này sau đó được lưu trữ trong table
         table = np.array([((i / 255.0) ** invGamma) * 255
             for i in np.arange(0, 256)]).astype("uint8")
-
         img = cv2.LUT(img, table)
         self.update_img(img)     
         self.list_image_for_undo.append(img)
@@ -269,11 +261,10 @@ class image_editor(QMainWindow):
     def gaussian_filter(self, g):
         gaussian_value = self.slider_gaussian.value()
         self.value_gaussian.setText(str(gaussian_value))
-
         self.save_state("gaussian") 
         image = ImageQt.fromqimage(self.processed_filter)
         img = self.img_to_cv(image)
-        img = cv2.GaussianBlur(img, (5, 5), g)
+        img = cv2.GaussianBlur(img, (5, 5), g) # làm mờ gaussian
         self.update_img(img) 
         self.list_image_for_undo.append(img)
         # delete image when slider more three
@@ -283,18 +274,14 @@ class image_editor(QMainWindow):
     def dilate_erosion(self , iter):
         dilate_erosion_value = self.slider_dilate_erosior.value()
         self.value_dilate_erosion.setText(str(dilate_erosion_value))
-
         self.save_state("dilate_erosion") 
         image = ImageQt.fromqimage(self.processed_filter)
         img = self.img_to_cv(image)
+        kernel = np.ones((5, 5), np.uint8) # lấy ma trận có kích thước 5 làm hạt nhân
         if iter > 0 :
-            #ấy ma trận có kích thước 5 làm hạt nhân
-            # #bạn muốn làm xói mòn / làm giãn một hình ảnh nhất định.
-            kernel = np.ones((4, 7), np.uint8)
-            img = cv2.erode(img, kernel, iterations=iter)
+            img = cv2.erode(img, kernel, iterations=iter) # xói mòn
         else :
-            kernel = np.ones((2, 6), np.uint8)
-            img = cv2.dilate(img, kernel, iterations=iter*-1)
+            img = cv2.dilate(img, kernel, iterations=iter)  # giãn nở
         self.update_img(img)
         self.list_image_for_undo.append(img)
         # delete image when slider more three
@@ -304,30 +291,30 @@ class image_editor(QMainWindow):
     def log(self, c):
         log_value = self.slider_log.value()
         self.value_log.setText(str(log_value))
-
         self.save_state("log") 
         image = ImageQt.fromqimage(self.processed_filter)
         img = self.img_to_cv(image)
         img_2 = np.uint8(np.log(img))
-        img_2 = cv2.threshold(img_2, 2, 225, cv2.THRESH_BINARY)[1]
+        img_2 = cv2.threshold(img_2, c, 255, cv2.THRESH_BINARY)[1]  #cv2.THRESH_BINARY: Nếu cường độ pixel lớn hơn ngưỡng đã đặt,
+        # giá trị được đặt thành 255, giá trị khác được đặt thành 0 (màu đen).
         self.update_img(img_2) 
-        self.list_image_for_undo.append(img)
+        self.list_image_for_undo.append(img_2)
         # delete image when slider more three
         if(self.list_state[0] == self.list_state[1] == self.list_state[2]):
             del self.list_image_for_undo[len(self.list_image_for_undo)-2]
 
-    def canny_edg_detector(self):
+    def canny_edg_detector(self):  #  phát hiện các cạnh trong hình ảnh.
         min_value = self.slider_min.value()
         self.value_min.setText(str(min_value))
         max_value = self.slider_max.value()
         self.value_max.setText(str(max_value))
-
         self.save_state("canny_edg_detector") 
         image = ImageQt.fromqimage(self.processed_filter)
         img = self.img_to_cv(image)
+
         if self.cb_canny_edge_detector.isChecked():
             #Chuyển đổi sang graycsal
-            can = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            can = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # COLOR_BGR2GRAY
             img = cv2.Canny(can, self.slider_min.value(), self.slider_max.value())
         self.update_img(img)  
         self.list_image_for_undo.append(img)  
@@ -363,7 +350,6 @@ class image_editor(QMainWindow):
         # delete image when slider more three
         if(self.list_state[0] == self.list_state[1] == self.list_state[2]):
             del self.list_image_for_undo[len(self.list_image_for_undo)-2]
-        
 
     def tv60(self):
         val_value = self.slider_60tv_val.value()
@@ -406,7 +392,7 @@ class image_editor(QMainWindow):
         v[v>lim] = 255
         v[v<=lim] += self.slider_brightness.value()
         final_hsv = cv2.merge((h,s,v))
-        img = cv2.cvtColor(final_hsv,cv2.COLOR_HSV2BGR)
+        img = cv2.cvtColor(final_hsv,cv2.COLOR_HSV2BGR)  # Convert color 
         self.update_img(img)   
         self.list_image_for_undo.append(img)
         # delete image when slider more three
@@ -784,6 +770,16 @@ class image_editor(QMainWindow):
         new_image = cv2.stylization(canvas, sigma_s=60, sigma_r=0.6)
         self.update_img(new_image)
         self.list_image_for_undo.append(new_image) 
+
+    # ---- chuong 3
+    def photo_island(self):
+        image = ImageQt.fromqimage(self.will_change_img)
+        img = self.img_to_cv(image)
+        self.list_state.append("chuong3_photo_island")
+        del self.list_state[0]
+        img = 255 - img
+        self.update_img(img)
+        self.list_image_for_undo.append(img)     
 
 app = QApplication(sys.argv)
 win = image_editor()
